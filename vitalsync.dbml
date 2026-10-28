@@ -1,0 +1,76 @@
+// Paste into https://dbdiagram.io to generate the ERD, then export as PNG to docs/erd.png
+// MongoDB collections modeled as tables; _id = ObjectId
+
+Table users {
+  _id objectid [pk]
+  name string [not null]
+  email string [unique, not null]
+  passwordHash string [not null]
+  role enum [note: 'doctor | patient', not null]
+  phone string
+  // Embedded doctor profile (role = doctor)
+  specialization string
+  licenseNo string
+  consultationFee number
+  // Embedded patient profile (role = patient)
+  dob date
+  gender string
+  bloodGroup string
+  allergies string [note: 'array of strings']
+  isActive boolean [default: true]
+  createdAt datetime
+  updatedAt datetime
+}
+
+Table availability_slots {
+  _id objectid [pk]
+  doctorId objectid [ref: > users._id, not null]
+  date date [not null]
+  startTime string [note: 'HH:mm', not null]
+  endTime string [note: 'HH:mm', not null]
+  status enum [note: 'available | booked | blocked', default: 'available']
+  createdAt datetime
+
+  indexes {
+    (doctorId, date, startTime) [unique]
+  }
+}
+
+Table appointments {
+  _id objectid [pk]
+  patientId objectid [ref: > users._id, not null]
+  doctorId objectid [ref: > users._id, not null]
+  slotId objectid [ref: - availability_slots._id, unique, not null]
+  reason string
+  status enum [note: 'pending | confirmed | completed | cancelled', default: 'pending']
+  cancelReason string
+  isDeleted boolean [default: false, note: 'soft delete']
+  createdAt datetime
+  updatedAt datetime
+}
+
+Table medical_records {
+  _id objectid [pk]
+  patientId objectid [ref: > users._id, not null]
+  doctorId objectid [ref: > users._id, not null]
+  appointmentId objectid [ref: > appointments._id]
+  type enum [note: 'visit | diagnosis | lab | note']
+  title string [not null]
+  description string
+  diagnosisCode string [note: 'optional ICD-style code']
+  recordedAt datetime [not null]
+  isDeleted boolean [default: false]
+  createdAt datetime
+}
+
+Table prescriptions {
+  _id objectid [pk]
+  patientId objectid [ref: > users._id, not null]
+  doctorId objectid [ref: > users._id, not null]
+  appointmentId objectid [ref: > appointments._id]
+  medications string [note: 'array of {name, dosage, frequency, durationDays}']
+  instructions string
+  status enum [note: 'active | completed | expired', default: 'active']
+  issuedAt datetime
+  expiresAt datetime
+}
